@@ -1,5 +1,3 @@
-// Codigo hecho para The Mystic - Bot - MD por https://github.com/BrunoSobrino
-// By @BrunoSobrino
 import axios from 'axios';
 const { proto, generateWAMessageFromContent, generateWAMessageContent } = (await import("baileys")).default;
 
@@ -7,7 +5,6 @@ let handler = async (message, { conn, text }) => {
     if (!text) return conn.sendMessage(message.chat, { text: '[❗] ¿Qué quieres buscar en TikTok?' }, { quoted: message });
 
     try {
-        //conn.sendMessage(message.chat, { text: global.wait }, { quoted: message });
         let response = await tiktokSearch(text);
         if (!response.status) throw new Error(response.resultado);
         let searchResults = response.resultado;
@@ -16,7 +13,7 @@ let handler = async (message, { conn, text }) => {
         let videoMessages = await Promise.all(selectedResults.map(result => createVideoMessage(result.videoUrl, conn)));
         let results = videoMessages.map((videoMessage, index) => ({
             body: proto.Message.InteractiveMessage.Body.fromObject({ text: '' }),
-            footer: proto.Message.InteractiveMessage.Footer.fromObject({ text: `*❧ By ${global.wm}*` }),
+            footer: proto.Message.InteractiveMessage.Footer.fromObject({ text: `*❧ By Bot*` }),
             header: proto.Message.InteractiveMessage.Header.fromObject({
                 title: selectedResults[index].description, hasMediaAttachment: true, videoMessage: videoMessage
             }),
@@ -88,6 +85,7 @@ function shuffleArray(array) {
         [array[i], array[j]] = [array[j], array[i]];
     }
 }
+
 
 /*import axios from 'axios'
 const {proto, generateWAMessageFromContent, prepareWAMessageMedia, generateWAMessageContent, getDevice} = (await import("baileys")).default
