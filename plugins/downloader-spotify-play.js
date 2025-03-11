@@ -1,97 +1,114 @@
-import fetch from 'node-fetch';
-import axios from 'axios';
-import { apis } from '../exports.js';
+import { DOMImplementation, XMLSerializer } from 'xmldom';
+import JsBarcode from 'jsbarcode';
+import { JSDOM } from 'jsdom';  
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { spawn } from 'child_process';
 
-const handler = async (m, {conn, command, args, text, usedPrefix}) => {
+const src = join(__dirname, '..', 'src')
+const _svg = readFileSync(join(src, 'welcome.svg'), 'utf-8')
+const barcode = data => {
+    const xmlSerializer = new XMLSerializer();
+    const document = new DOMImplementation().createDocument('http://www.w3.org/1999/xhtml', 'html', null);
+    const svgNode = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 
-    if (!text) m.reply(`_*[ ⚠️ ] Agrega lo que quieres buscar en Spotify*_\n\n_Ejemplo:_\n.play Marshmello Moving On`);
+    JsBarcode(svgNode, data, {
+        xmlDocument: document,
+    });
 
-    try { 
-        
-        let { data } = await axios.get(`${apis.delirius}search/spotify?q=${encodeURIComponent(text)}&limit=10`);
+    return xmlSerializer.serializeToString(svgNode);
+}
+const imageSetter = (img, value) => img.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', value)
+const textSetter = (el, value) => el.textContent = value
 
-        if (!data.data || data.data.length === 0) {
-            throw `_*[ ⚠️ ] No se encontraron resultados para "${text}" en Spotify.*_`;
-        }
-
-        const img = data.data[0].image;
-        const url = data.data[0].url;
-        const info = `⧁ 𝙏𝙄𝙏𝙐𝙇𝙊
-» ${data.data[0].title}
-﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘
-⧁ 𝙋𝙐𝘽𝙇𝙄𝘾𝘼𝘿𝙊
-» ${data.data[0].publish}
-﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘
-⧁ 𝗗𝗨𝗥𝗔𝗖𝗜𝗢𝗡
-» ${data.data[0].duration}
-﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘
-⧁  𝙋𝙊𝙋𝙐𝙇𝘼𝙍𝙄𝘿𝘼𝘿
-» ${data.data[0].popularity}
-﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘
-⧁  𝘼𝙍𝙏𝙄𝙎𝙏𝘼
-» ${data.data[0].artist}
-﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘﹘
-⧁ 𝙐𝙍𝙇
-» ${url}
-
-_*🎶 Enviando música...*_`.trim();
-
-        await conn.sendFile(m.chat, img, 'imagen.jpg', info, m);
-
-        //＼／＼／＼／＼／＼／ DESCARGAR ＼／＼／＼／＼／＼／
-        
-        try {
-            const api1 = `${apis.delirius}download/spotifydl?url=${encodeURIComponent(url)}`;
-            const response1 = await fetch(api1);
-            const result1 = await response1.json();
-            
-            const downloadUrl1 = result1.data.url;
-            await conn.sendMessage(m.chat, { audio: { url: downloadUrl1 }, fileName: 'audio.mp3', mimetype: 'audio/mpeg', caption: null, quoted: m });
-        } catch (e1) {
-            
-            try {
-                const api2 = `${apis.delirius}download/spotifydlv3?url=${encodeURIComponent(url)}`;
-                const response2 = await fetch(api2);
-                const result2 = await response2.json();
-                
-                const downloadUrl2 = result2.data.url;
-                await conn.sendMessage(m.chat, { audio: { url: downloadUrl2 }, fileName: 'audio.mp3', mimetype: 'audio/mpeg', caption: null, quoted: m });
-                
-            } catch (e2) {
-                
-                try {
-                    const api3 = `${apis.rioo}api/spotify?url=${encodeURIComponent(url)}`;
-                    const response3 = await fetch(api3);
-                    const result3 = await response3.json();
-                    
-                    const downloadUrl3 = result3.data.response;
-                    await conn.sendMessage(m.chat, { audio: { url: downloadUrl3 }, fileName: 'audio.mp3', mimetype: 'audio/mpeg', caption: null, quoted: m });
-                    
-                } catch (e3) {
-                    
-                    try {
-                        const api4 = `${apis.ryzen}api/downloader/spotify?url=${encodeURIComponent(url)}`;
-                        const response4 = await fetch(api4);
-                        const result4 = await response4.json();
-                    
-                        const downloadUrl4 = result4.link;
-                        await conn.sendMessage(m.chat, { audio: { url: downloadUrl4 }, fileName: 'audio.mp3', mimetype: 'audio/mpeg', caption: null, quoted: m });
-                    
-                    } catch (e4) {
-                        m.reply(`❌ Ocurrió un error al descargar el audio\nError:${e4.message}`);
-                    }
-                }
-            }
-        }
-
-
-    } catch (e) {
-
-        await conn.reply(m.chat, `❌ _*El comando #play está fallando, repórtalo al creador del bot*_`, m);
-        console.log(e);
+let { document: svg } = new JSDOM(_svg).window
+/**
+ * Generate SVG Welcome
+ * @param {object} param0
+ * @param {string} param0.wid
+ * @param {string} param0.pp
+ * @param {string} param0.name
+ * @param {string} param0.text
+ * @param {string} param0.background
+ * @returns {string}
+ */
+const genSVG = async ({
+    wid = '',
+    pp = join(src, 'catalogo.jpg'),
+    title = '',
+    name = '',
+    text = '',
+    background = ''
+} = {}) => {
+    let el = {
+        code: ['#_1661899539392 > g:nth-child(6) > image', imageSetter, toBase64(await toImg(barcode(wid.replace(/[^0-9]/g, '')), 'png'), 'image/png')],
+        pp: ['#_1661899539392 > g:nth-child(3) > image', imageSetter, pp],
+        text: ['#_1661899539392 > text.fil1.fnt0', textSetter, text],
+        title: ['#_1661899539392 > text.fil2.fnt1', textSetter, title],
+        name: ['#_1661899539392 > text.fil2.fnt2', textSetter, name],
+        bg: ['#_1661899539392 > g:nth-child(2) > image', imageSetter, background],
     }
-};
+    for (let [selector, set, value] of Object.values(el)) {
+        set(svg.querySelector(selector), value)
+    }
+    return svg.body.innerHTML
+}
 
-handler.command = ['play'];
-export default handler;
-                
+const toImg = (svg, format = 'png') => new Promise((resolve, reject) => {
+    if (!svg) return resolve(Buffer.alloc(0))
+    let bufs = []
+    let im = spawn('magick', ['convert', 'svg:-', format + ':-'])
+    im.on('error', e => reject(e))
+    im.stdout.on('data', chunk => bufs.push(chunk))
+    im.stdin.write(Buffer.from(svg))
+    im.stdin.end()
+    im.on('close', code => {
+        if (code !== 0) reject(code)
+        resolve(Buffer.concat(bufs))
+    })
+})
+
+const toBase64 = (buffer, mime) => `data:${mime};base64,${buffer.toString('base64')}`
+
+/**
+ * Render SVG Welcome
+ * @param {object} param0
+ * @param {string} param0.wid
+ * @param {string} param0.pp
+ * @param {string} param0.name
+ * @param {string} param0.text
+ * @param {string} param0.background
+ * @returns {Promise<Buffer>}
+ */
+const render = async ({
+    wid = '',
+    pp = toBase64(readFileSync(join(src, 'catalogo.jpg')), 'image/png'),
+    name = '',
+    title = '',
+    text = '',
+    background = toBase64(readFileSync(join(src, 'catalogo', 'src/catalogo.jpg')), 'image/jpeg'),
+} = {}, format = 'png') => {
+    let svg = await genSVG({
+        wid, pp, name, text, background, title
+    })
+    return await toImg(svg, format)
+}
+
+if (require.main === module) {
+    render({
+        wid: '1234567890',
+        // pp: '',
+        name: 'John Doe',
+        text: 'Lorem ipsum\ndot sit color',
+        title: 'grup testing'
+        // background: ''
+    }, 'jpg').then(result => {
+        // console.log(result)
+        process.stdout.write(result)
+    })
+    // toImg(barcode('test')).then(result => {
+    //     // console.log(result)
+    //     process.stdout.write(result)
+
+    // })
+} else module.exports = render
