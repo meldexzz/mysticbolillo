@@ -92,6 +92,6 @@ _*🎶 Enviando música...*_`.trim();
     }
 };
 
-handler.command = ['play'];
+handler.command = ['play|playyy'];
 export default handler;
                 
